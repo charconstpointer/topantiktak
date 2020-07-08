@@ -21,23 +21,26 @@ namespace Taki
     public class MojeTrack : ITrack
     {
         public int Id { get; }
+        public int ChannelId { get; }
         public string Title { get; }
         public string Artist { get; }
         public DateTime Start { get; }
         public DateTime Stop { get; }
 
-        public MojeTrack(int id, string title, string artist, DateTime start, DateTime stop)
+        public MojeTrack(int id, int channelId, string title, string artist, DateTime start, DateTime stop)
         {
             Id = id;
             Title = title;
             Artist = artist;
             Start = start;
             Stop = stop;
+            ChannelId = channelId;
         }
     }
 
     public class Moje
     {
+        public int Id { get; set; }
         public IEnumerable<Track> Songs { get; set; }
     }
 
@@ -45,22 +48,26 @@ namespace Taki
     {
         static async Task Main(string[] args)
         {
-            var client = new HttpClient();
-            var schedule = await GetMoje(client);
-            var mojeSchedule = schedule.Select(x => x.AsEntity()).ToList();
-            var playlist = new Playlist<MojeTrack>();
-            Parallel.ForEach(mojeSchedule, (mojeTracks) =>
+            try
             {
+                var client = new HttpClient();
+                var schedule = await GetMoje(client);
+                var mojeSchedule = schedule.Select(x => x.AsEntity()).ToList();
+                var playlist = new Playlist<MojeTrack>();
+                foreach (var mojeTracks in mojeSchedule.Where(mojeTracks => mojeTracks.Any()))
+                {
+                    playlist.AddChannel(mojeTracks.FirstOrDefault().ChannelId, mojeTracks);
+                }
 
-                playlist.AddChannel(mojeSchedule.IndexOf(mojeTracks), mojeTracks);
-            });
-            // foreach (var mojeTracks in mojeSchedule)
-            // {
-            //   
-            //     
-            // }
-            playlist.TrackChanged += PlaylistOnTrackChanged;
-            playlist.Start();
+                playlist.TrackChanged += PlaylistOnTrackChanged;
+                playlist.Start();
+            }
+            catch (Exception e)
+            {
+                Console.WriteLine(e);
+                throw;
+            }
+
             Console.ReadKey();
         }
 
@@ -71,23 +78,31 @@ namespace Taki
 
         private static async Task<IEnumerable<Moje>> GetMoje(HttpClient client)
         {
-            var ids = Enumerable.Range(1, 100).Select(x => x);
+            // var ids = new List<int> {79};
+            var ids = Enumerable.Range(1, 111).Select(x => x);
             var schedules = new List<Moje>();
             foreach (var id in ids)
             {
-                var schedule = await client.GetFromJsonAsync<Moje>(
-                    "http://moje.polskieradio.pl/api/?mobilestationid=103&key=d590cafd-31c0-4eef-b102-d88ee2341b1a");
-                Console.WriteLine($"Fetching #{id}");
-                for (var i = 0; i < schedule.Songs.Count() - 1; i++)
+                try
                 {
-                    var current = schedule.Songs.ElementAt(i);
-                    var next = schedule.Songs.ElementAt(i + 1);
-                    current.Stop = next.ScheduleTime;
-                    current.ScheduleTime = current.ScheduleTime.Trim(TimeSpan.TicksPerMinute);
-                    current.Stop = current.Stop.Trim(TimeSpan.TicksPerMinute);
-                }
+                    Console.WriteLine($"Fetching #{id}");
+                    var schedule = await client.GetFromJsonAsync<Moje>(
+                        $"http://moje.polskieradio.pl/api/?mobilestationid={id}&key=d590cafd-31c0-4eef-b102-d88ee2341b1a");
+                    for (var i = 0; i < schedule.Songs.Count() - 1; i++)
+                    {
+                        var current = schedule.Songs.ElementAt(i);
+                        var next = schedule.Songs.ElementAt(i + 1);
+                        current.Stop = next.ScheduleTime;
+                        current.ScheduleTime = current.ScheduleTime.Trim(TimeSpan.TicksPerMinute);
+                        current.Stop = current.Stop.Trim(TimeSpan.TicksPerMinute);
+                    }
 
-                schedules.Add(schedule);
+                    if (schedule.Songs.Any()) schedules.Add(schedule);
+                }
+                catch (Exception e)
+                {
+                    Console.WriteLine(e);
+                }
             }
 
             return schedules;
@@ -97,7 +112,7 @@ namespace Taki
     public static class Mapper
     {
         public static IEnumerable<MojeTrack> AsEntity(this Moje moje)
-            => moje.Songs.Select(t => new MojeTrack(t.Id, t.Title, t.Artist, t.ScheduleTime, t.Stop));
+            => moje.Songs?.Select(t => new MojeTrack(t.Id, moje.Id, t.Title, t.Artist, t.ScheduleTime, t.Stop));
     }
 
     public static class Foo

@@ -31,7 +31,15 @@ namespace Taki
                 {
                     foreach (var (key, value) in _channels)
                     {
-                        if (!value.TryPeek(out var current)) continue;
+                        if (!value.TryPeek(out var current))
+                        {
+                            if (current is null)
+                            {
+                                continue;
+                            }
+                            Console.WriteLine($"{key} -> {current.Start} : {current.Stop}");
+                            continue;
+                        }
                         if (current.Stop > DateTime.UtcNow.AddHours(2))
                         {
                             continue;
@@ -41,7 +49,7 @@ namespace Taki
                         OnTrackChanged(key, value.Peek());
                         Console.WriteLine("Track has expired, popping");
                     }
-
+    
                     Thread.Sleep(1000);
                 }
                 catch (Exception e)
@@ -69,7 +77,7 @@ namespace Taki
         public void AddChannel(int channelId, IEnumerable<T> tracks)
         {
             var t = tracks.ToList();
-            if (_channels.ContainsKey(channelId)) throw new ApplicationException("Channel already exists");
+            if (_channels.ContainsKey(channelId)) return;// throw new ApplicationException("Channel already exists");
             _channels.Add(channelId, new Stack<T>());
             var channel = _channels[channelId];
             var channelSchedule = t.ToList();
