@@ -62,7 +62,7 @@ namespace Taki
             // ReSharper disable once FunctionNeverReturns
         }
 
-        public event EventHandler<TrackChangedEvent> TrackChanged;
+        public event EventHandler<TrackChangedEvent<T>> TrackChanged;
 
 
         public int GetProgress(int channelId)
@@ -97,7 +97,7 @@ namespace Taki
 
         private void OnTrackChanged(int channelId, T track)
         {
-            TrackChanged?.Invoke(this, new TrackChangedEvent
+            TrackChanged?.Invoke(this, new TrackChangedEvent<T>
             {
                 Track = track,
                 ChannelId = channelId

@@ -71,9 +71,9 @@ namespace Taki
             Console.ReadKey();
         }
 
-        private static void PlaylistOnTrackChanged(object? sender, TrackChangedEvent e)
+        private static void PlaylistOnTrackChanged<T>(object? sender, TrackChangedEvent<T> e)
         {
-            Console.WriteLine($"Zmianka {e.ChannelId}");
+            Console.WriteLine($"Zmianka {e.ChannelId} {e.Track}");
         }
 
         private static async Task<IEnumerable<Moje>> GetMoje(HttpClient client)

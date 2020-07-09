@@ -1,8 +1,8 @@
 ﻿namespace Taki
 {
-    public class TrackChangedEvent
+    public class TrackChangedEvent<T>
     {
         public int ChannelId { get; set; }
-        public ITrack Track { get; set; }
+        public T Track { get; set; }
     }
 }
